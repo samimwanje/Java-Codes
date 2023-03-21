@@ -1,0 +1,22 @@
+<!--- Index file --->
+<html>
+    <head>
+        <title>Java WebServer Upload </title>
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+        <link rel="stylesheet" href="/style/style.css" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon.png">
+        <script src="/script/loadmenu.js" defer></script> 	
+        <script src="/script/loadfooter.js" defer></script>
+    </head>	
+    <body>
+        <div id="loadmenu"></div>									<!--- Read script that contains menu bar--->
+        <div>
+            <h1>Upload a PNG image</h1>
+            <form id="uploadbanner" enctype="multipart/form-data" method="post" action="#">
+                <input size="25%" height="50" id="fileupload" name="postdata"  accept="image/png" type="file" />
+                <input size="25%" height="50" type="submit" value="submit" id="submit" />
+            </form>
+        </div>
+        <div id="loadfooter"></div>                             <!--- Read script that contains footer bar--->
+    </body>
+</html>

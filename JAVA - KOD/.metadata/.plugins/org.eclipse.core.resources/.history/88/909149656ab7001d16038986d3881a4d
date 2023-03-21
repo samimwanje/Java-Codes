@@ -1,0 +1,168 @@
+package mm223kk_assignment_2;
+
+//Needed libraries, only built in.
+import java.io.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+
+import src.Errors;
+
+/**
+ * This class uploads png files from client to server.
+ * @author Sami Mwanje, mm223kk@student.lnu.se
+ *
+ */
+
+public class Post {
+	private Socket socket;	// Current socket
+	private Errors Errors;	// Error handling class.
+
+	Post(Socket socket, File root){
+		this.socket = socket;
+		this.Errors = new Errors(socket, root);
+	}
+
+	/**
+	 * This function is used to handle an upload from the user,
+	 * it may not be perfect but it checkes the header of the upload
+	 * and verifies that it it a real .png image. It also discards upload
+	 * that are not .png. 
+	 * @param boundary
+	 * @param contentLength
+	 */
+	public void handlePost(int contentLength) {
+		 try {	
+			 	String imageName  = (  (long)(Math.random() * 100000000000000L) )+".png";	// Generate random number for the file name.		 			
+			 	File tempImage = new File("public/upload/pngs/"+imageName);					// Check if image exists.
+			 	while(tempImage.exists()) {													// While number is occupied.
+			 		imageName  = (  (long)(Math.random() * 100000000000000L) )+".png";		// Generate new random number.
+			 		tempImage = new File("public/upload/pngs/"+imageName);					// Change file object.
+			 	} 	
+			 	
+			 	File uploadedImage = new File("public/upload/pngs/"+imageName);	// The file will be located in uploads
+			 	FileOutputStream fileOutputStream = new FileOutputStream(uploadedImage, false);
+			 	InputStream inputStream = socket.getInputStream();
+			 	// Header end flag.	
+			 	int fileSize = contentLength;			// The size of streaming file. ( Bytes ). 
+			 	if(fileSize <= 192) {	// Check if empty file is sent.
+		        	Errors.errorHandle("415 Unsupported Media Type", "Error 415: Image you are trying to upload has the wrong type");														// Redirect user to fail page.
+			 		fileOutputStream.close();	// Close the stream.
+			 		return;
+			 	}
+			 	
+			 	int bufferSize = Math.min(2048,contentLength);
+ 	
+		        byte[] buffer = new byte[bufferSize];		// Bytes to write/read per loop. Either 2048 or the file size if less.
+		        int bytesRead = 0;										// Bytes read of the file.
+		        boolean endOfHeader = false;							// If done reading header.						
+		        String  head = "";			        					// Variable holding the image data head as a string.
+		        while (true) {							// read/write buffer until the entire file has been written.
+		        	
+		        	int bytesToRead = Math.min(buffer.length, fileSize - bytesRead);	// If bytes left are less than buffer size then read the bytes left.
+		            int length = inputStream.read(buffer, 0, bytesToRead);				// Receive the next input stream and add it to the bytes array.
+		            if(length != bufferSize)	// Break when length is no longer buffer size.
+		            	break;
+		            
+		            if (!endOfHeader) {
+		            		// Check for the end of the header
+		                	for (int i = 0; i < length - 3; i++) {	// Check if current bytes contains header.
+			                    	if (buffer[i] == '\r' && buffer[i + 1] == '\n' && buffer[i + 2] == '\r' && buffer[i + 3] == '\n') {	// Check if done printing header.
+				                        endOfHeader = true;																				// Set end of header true, since done reading header.
+				                        int dataStart = i + 4;																			// Set pointer where the data starts + 4 to skip the .
+				                        int dataLength = length - dataStart;															// Calculate the current buffered data length.
+				                        head = new String(buffer, 0, length, StandardCharsets.UTF_8);									// Place the head of file in a string.
+				                        fileOutputStream.write(buffer, dataStart, dataLength);											// Write bytes where header ends to file.
+			                    	}             
+		                	}
+		            } else {
+		                fileOutputStream.write(buffer, 0, length);															// Write current buffer to file.
+		            } 
+		            bytesRead += length;																					// Increase bytes read.
+		        }
+		        
+		        if(!checkType(head)) {
+		        	fileOutputStream.close();																				// Close the image write stream.
+		        	uploadedImage.delete();																					// Delete the file.
+			    	System.out.println("Unsportted media by:  "+ socket.getInetAddress().getHostAddress() + ":" + socket.getPort());	//Log unsupported in console.
+		        	Errors.errorHandle("415 Unsupported Media Type", "Error 415: Image you are trying to upload has the wrong type");														// Redirect user to fail page.
+		        }else {	
+		        	redirect("302 Found", "/upload/success.html?code="+imageName); 											// Redirect user to success page.
+		        	fileOutputStream.close();																				// Close the image write stream.
+		        	System.out.println("User "+socket.getInetAddress().getHostAddress() + ":" + socket.getPort()+"uploaded"+imageName+".png");
+               }
+		        
+			 	
+		} catch (Exception e) {
+				e.printStackTrace();
+				Errors.internalError(); // If something happens here, send an internal error to the user.
+		} 
+	}
+	
+	
+	/**
+	 * This method is used to check the type of the uploaded file
+	 * If the type is not .png the method will return false.
+	 * If the type is .png the method will return true.
+	 * @param request - The current data stream the requester sent.
+	 * @return
+	 */
+	private boolean checkType(String  head){
+		try {	
+			if( head.contains("Content-Type: image/png") && head.contains(".png") &&  head.contains("PNG") )	// Check if the file type is PNG.
+				return true;	// Return true if this is a pang file.
+			else 
+				return false;	// Return false if the file is not a PNG.
+			
+		} catch (Exception  e) {
+			e.printStackTrace();
+			Errors.internalError(); 	// If something wrong happens here, send an internal error to the user.
+		}
+		return false;		// If fail the return will be false..
+	}
+	
+	/**
+	 * This method is used to discard a file when it is too large,
+	 * The method is used since the browser could not receive the Error code 413,
+	 * While it was trying to upload the data.
+	 * This function will prevent too large data to be written to the server,
+	 * And respond with and error 413 to the client. 
+	 */
+	public void tooLarge() {	
+		try {
+			 InputStream inputStream = socket.getInputStream();			// Set input stream.
+	         while (true) {												// Run until done read data.
+	        	long bytesRead = inputStream.read(new byte[16384]);		// Read 16384 bytes per loop.
+			    if (bytesRead != 16384) {								// Check if done reading the file.
+			        break; 												// end of input stream reached  
+			}
+		}
+			Errors.errorHandle("413 Payload Too Large","Error 413: The image is too Large");	
+		}catch(Exception e) {
+			Errors.internalError();	
+		}
+															
+	}
+	
+
+	 public void redirect(String status, String redirection) {
+			try {
+				// Set response to index.html if it is a directory.
+		 	    PrintWriter head = new PrintWriter(socket.getOutputStream());
+		 	    head.println("HTTP/1.1 "+status);
+				head.println("Location: "+redirection);
+				head.println("Server: NetworkServer Mm223kk_assignment: 2.0");
+		 		head.println();																	// New line between response header, and response data.
+		 		head.flush();																	// Clear the stream.
+		 		head.println();
+		 		head.flush();																	// Clear the stream.
+		 	    head.close();																	// Close the header stream.
+				socket.close();				
+			} catch (Exception e) {
+				Errors.internalError();															 // If something happens here, send an internal error to the user.
+				e.printStackTrace();
+			}																
+		}
+	
+
+
+}

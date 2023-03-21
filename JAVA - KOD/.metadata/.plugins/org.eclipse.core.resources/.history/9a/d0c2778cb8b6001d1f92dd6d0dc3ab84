@@ -1,0 +1,91 @@
+package mm223kk_assignment_2;
+
+//Needed libraries, only built in.
+import java.io.*;
+import java.net.*;
+
+/**
+ * This class start the server and sets up the initial port,
+ * and root directory. 
+ * @author Sami Mwanje, mm223kk@student.lnu.se
+ */
+public class WebServer {
+	
+	private static ServerSocket server;	// Server variable.
+	private static Socket socket;
+	private static File root;
+
+	public static void main(String[] args){
+     	 	try {
+     	 		initRoot(args[1]);			// Initialize root set by user arguments.
+    		 	initPort(args[0]);			// Initialize the server on port set by user arguments.
+				System.out.println("Server is running at: http://" +InetAddress.getLocalHost().getHostAddress()+":"+server.getLocalPort()+"\n\n");
+				 
+				while(true) {
+					socket = server.accept();		// Waiting for connections to handle.
+					new Thread(new Request(socket, root)).start();						// Handle incoming user requests on new thread.
+			 	}
+     	 	} catch (IOException e1) {
+     	 		System.err.println("Your server has crashed. Try again or check port and router settings.");	// Probably a crash, or port conflict inside fire wall.
+				e1.printStackTrace();
+				System.exit(0);
+			}
+	 }
+
+	 /**
+	  * Function used to initialize port for the server.
+	  * @param userPort - A port number for the server.
+	  */
+	 private static void initPort(String userPort) {
+		 if(userPort == null) {
+			 System.err.println("Not enough arguments provided");
+			 System.err.println("Format should be: WebServer [port] [serving_directory]");
+			 System.exit(0);
+		 }
+
+		// Try to read  the arguments and start the server.
+	     try {
+	     	 	int port = Integer.parseInt(userPort);     	 													// Check if port argument is a number.
+	     	 	if(port != 80 && port <= 1023) 				 													// Check if is a well known reserved port. Go on if port is 80.
+	     	 		throw new RuntimeException("Port out of range, port can only be 80 or above 1023.");			// Throw a port out of range exception.
+	     	 	server = new ServerSocket(port);																// Initialize server port.
+			} catch (NumberFormatException | IOException e) {
+				System.err.println("ERROR, something is work with prodvided port number.");										// Throw error if port isn't within range.
+				System.err.println("Format should be: WebServer [port] [serving_directory]");					// Help to indicate needed formats.
+	 			System.err.println("Example: java WebServer 80 public");										
+				System.exit(0);
+			}
+	 }
+	 
+	 /**
+	  * Function that initializes working directory.
+	  * Checks if working directory contains an index.html file,
+	  * If not current directory cannot be used.
+	  * @param userRoot - the directory that the user has chosen as root.
+	  */
+	 private static void initRoot(String userRoot) {
+		 
+		 // Check user arguments
+		 if(userRoot == null) {
+			 System.out.println("Not enough arguments provided");							// An error if some arguments are missing.
+			 System.out.println("Format should be: WebServer [port] [serving_directory]");	// Help to indicate needed formats. 
+			 System.exit(0);
+		 }
+	 
+		 try {
+		 		root = new File(userRoot);													// Path of root folder.	
+			 	File indexFile = new File(root.getPath()+"\\index.html");					// Check if index.html exists in current root.		 		
+		 		if(root.isDirectory() && indexFile.exists()) {
+		 			 System.out.println("Server directory set to: "+root.getAbsolutePath());							// Print that the root directory has been set in console.
+		 			 return;
+		 		}else {
+		 			 System.err.println("Error please provide a server directory containing an index.html file.");		// Help to indicate needed formats.
+		 			 System.err.println("Format should be: WebServer [port] [serving_directory]");				
+		 			 System.err.println("Example: java WebServer 80 public");	
+		 			 System.exit(0); 
+		 		}		
+		 } catch (Exception e) {
+				e.printStackTrace();
+		 }
+	 }	 
+}

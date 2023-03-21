@@ -1,0 +1,7 @@
+23642;Hallviken
+35243;Voxjo
+51000;Jonkoping
+72211;Vasteros
+75242;Uppsala
+90325;Umeo
+96133;Boden

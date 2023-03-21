@@ -1,0 +1,341 @@
+package mm223kk_assignment_2;
+
+//Needed libraries, only built in.
+import java.io.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Date;
+import java.util.StringTokenizer;
+
+//Main class
+public class WebServer {
+	
+	private static ServerSocket server;	// Server variable.
+	private static Socket socket;
+	private static File root;
+
+	 // Main method
+	 public static void main(String[] args){
+     	 	try {
+     	 		initRoot(args[1]);			// Initialize root set by user arguments.
+    		 	initPort(args[0]);			// Initialize the server on port set by user arguments.
+				System.out.println("Server is running at: http://" +InetAddress.getLocalHost().getHostAddress()+":"+server.getLocalPort()+"\n\n");
+				while(true) {
+					socket = server.accept();		// Waiting for connections to handle.
+					handleHeader();					// Handle incoming user stream.
+			 	}
+     	 	} catch (IOException e1) {
+     	 		System.err.println("Your server has crashed. Try again or check port and router settings.");	// Probably a crash, or port conflict inside fire wall.
+				e1.printStackTrace();
+				System.exit(0);
+			}
+	 }
+
+	 /**
+	  * Function used to initialize port for the server.
+	  * @param userPort - A port number for the server.
+	  */
+	 private static void initPort(String userPort) {
+		 if(userPort == null) {
+			 System.err.println("Not enough arguments provided");
+			 System.err.println("Format should be: WebServer [port] [serving_directory]");
+			 System.exit(0);
+		 }
+
+		// Try to read  the arguments and start the server.
+	     try {
+	     	 	int port = Integer.parseInt(userPort);     	 													// Check if port argument is a number.
+	     	 	if(port != 80 && port <= 1023) 				 													// Check if is a well known reserved port. Go on if port is 80.
+	     	 		throw new RuntimeException("Port out of range, port can only be 80 or above 1023.");			// Throw a port out of range exception.
+	     	 	server = new ServerSocket(port);																// Initialize server port.
+			} catch (NumberFormatException | IOException e) {
+				System.err.println("ERROR, something is work with prodvided port number.");										// Throw error if port isn't within range.
+				System.err.println("Format should be: WebServer [port] [serving_directory]");					// Help to indicate needed formats.
+	 			System.err.println("Example: java WebServer 80 public");										
+				System.exit(0);
+			}
+	 }
+	 
+	 /**
+	  * Function that initializes working directory.
+	  * Checks if working directory contains an index.html file,
+	  * If not current directory cannot be used.
+	  * @param userRoot - the directory that the user has chosen as root.
+	  */
+	 private static void initRoot(String userRoot) {
+		 
+		 // Check user arguments
+		 if(userRoot == null) {
+			 System.out.println("Not enough arguments provided");							// An error if some arguments are missing.
+			 System.out.println("Format should be: WebServer [port] [serving_directory]");	// Help to indicate needed formats. 
+			 System.exit(0);
+		 }
+	 
+		 try {
+		 		root = new File(userRoot);													// Path of root folder.	
+			 	File indexFile = new File(root.getPath()+"\\index.html");					// Check if index.html exists in current root.		 		
+		 		if(root.isDirectory() && indexFile.exists()) {
+		 			 System.out.println("Server directory set to: "+root.getAbsolutePath());							// Print that the root directory has been set in console.
+		 		}else {
+		 			 System.err.println("Error please provide a server directory containing an index.html file.");		// Help to indicate needed formats.
+		 			 System.err.println("Format should be: WebServer [port] [serving_directory]");				
+		 			 System.err.println("Example: java WebServer 80 public");	
+		 			 System.exit(0); 
+		 		}		
+		 } catch (Exception e) {
+				e.printStackTrace();
+		 }
+	 }
+	 
+	 public static void handleHeader() {
+		 	try {	
+		 		BufferedReader request = new BufferedReader(new InputStreamReader(socket.getInputStream()));   			// Receive request data.
+		 		String requestLocation =  request.readLine();															// The method used and the requested path.
+			    String requestHeader = null;																			// String holding request header.		    
+			    String boundary = null;
+			    String contentLength ="";
+			    // Go through request header.
+			    while ((requestHeader = request.readLine()) != null){
+			    	if(requestHeader.isEmpty())
+			    		break;    	
+			    	if(requestHeader.contains("Content-Type: multipart/form-data;"))
+			    		boundary = requestHeader;	
+			    	if(requestHeader.contains("Content-Length:"))
+			    		contentLength = requestHeader;
+			    }
+			    
+			    contentLength = contentLength.substring(contentLength.indexOf(" ")+1,contentLength.length());
+
+			    // Creating a StringTokenizer
+			    if(requestLocation == null)
+			    	return;
+		        StringTokenizer token = new StringTokenizer(requestLocation);  
+		        String requestMethod = token.nextToken();
+			    
+			    if(requestMethod.equals("GET"))
+			    	genResponse(formatePath(token.nextToken()));											// Fix the requested path and generate a response.
+			    else if(requestMethod.equals("POST"))
+			    	handlePost(boundary, contentLength);																			// Start generating a response.
+			    else
+			    	errorHandle("404 Method Not Allowed","Error 404 Method" +requestMethod +"Not Allowed.\n Please use GET or POST.");																// If the requested method is not allowed, then display an error.
+			    
+		 	} catch (Exception e) {
+		 		e.printStackTrace();
+				errorHandle("500 Internal Server Error", "Error 500: Internal Server Error."); // If something happens here, send an internal error to the user.
+			}
+	 }
+	 
+	 
+
+	 /**
+	  * This method is generates at response from a request.
+	  * @param formatedLocation - The path that the browser requested.
+	  */
+	 public static void genResponse(String formatedLocation) {
+ 
+	 		try {
+			    byte[] requestedFile = null;																// Hold the requested file data in byes.
+			    if(formatedLocation.contains("?") && formatedLocation.contains("="))
+			    	formatedLocation = formatedLocation.substring(0,formatedLocation.indexOf("?"));
+			    	    		
+			    if(new File(root.getPath()+"\\"+formatedLocation).isDirectory())							// Check if location is a directory.
+			    	formatedLocation += "\\index.html";	    												// Set response to index.html if it is a directory.
+			    requestedFile = Files.readAllBytes(Paths.get(root.getPath()+"\\"+formatedLocation));		// Go to requested path.			  		    
+		 	    PrintWriter head = new PrintWriter(socket.getOutputStream());
+		 		DataOutputStream data = new DataOutputStream(socket.getOutputStream());
+
+		 		head.println("HTTP/1.1 200 OK");											// Response code.
+		 		head.println("Server: NetworkServer Mm223kk_assignment: 2.0");				// Server Information.
+		 		head.println("Date: " + new Date());										// Current Time.
+		 		head.println("Content-Type: "+requestType(formatedLocation));				// Set the type.
+		 		head.println("Content-Length: " + requestedFile.length);					// Content size (bytes).
+		 		head.println();																// New line between response header, and response data.
+		 		head.flush();																// Clear the stream.
+		 	    data.write(requestedFile);													// Write the data to the header.
+		 	    data.flush();																// Clear the stream.
+		 	    // Close the input streams and socket.
+		 	    head.close();																// Close the header stream.
+		 	    data.close();																// Close the data stream.
+		 	    socket.close();																// Close the socket.		
+			} catch (Exception e) {
+				System.out.println("HTTP/1.1 404 Not Found: "+formatedLocation +" was not found.");
+				errorHandle("404 Not Found", "Error 404: requested page not found.");																	// Send 404 error message to user.
+			}
+	 	}
+	
+	 	private static void handlePost(String boundary, String contentLength) { 
+
+			 try {	
+				 
+				 	String imageName  = (  (long)(Math.random() * 100000000000000L) )+".png";	// Generate random number for the file name.		 			
+				 	File tempImage = new File("public/upload/pngs/"+imageName);					// Check if image exists.
+				 	while(tempImage.exists()) {													// While number is occupied.
+				 		imageName  = (  (long)(Math.random() * 100000000000000L) )+".png";		// Generate new random number.
+				 		tempImage = new File("public/upload/pngs/"+imageName);					// Change file object.
+				 	} 	
+				 	
+				 	File uploadedImage = new File("public/upload/pngs/"+imageName);	// The file will be located in uploads
+				 	FileOutputStream fileOutputStream = new FileOutputStream(uploadedImage, false);
+				 	InputStream inputStream = socket.getInputStream();
+
+				 	// Header end flag.
+				 	int fileSize = Integer.parseInt(contentLength);			// The size of streaming file. ( Bytes ). 
+
+				 	if(fileSize <= 192) {	// Check if empty file is sent.
+				 		postError("303 See Other", "/upload/fail.html");	// Return fail error.
+				 		fileOutputStream.close();	// Close the stream.
+				 		return;
+				 	}
+				 	
+				 	
+			        byte[] buffer = new byte[Math.min(2048, fileSize)];		// Bytes to write/read per loop. Either 2048 or the file size if less.
+			        int bytesRead = 0;										// Bytes read of the file.
+			        boolean endOfHeader = false;							// If done reading header.						
+			        String  head = "";			        					// Variable holding the image data head as a string.
+			        while (bytesRead < fileSize) {							// read/write buffer until the entire file has been written.
+			        	int bytesToRead = Math.min(buffer.length, fileSize - bytesRead);	// If bytes left are less than buffer size then read the bytes left.
+			            int length = inputStream.read(buffer, 0, bytesToRead);				// Receive the next input stream and add it to the bytes array.
+			            if (!endOfHeader) {
+			            		// Check for the end of the header
+			                	for (int i = 0; i < length - 3; i++) {	// Check if current bytes contains header.
+				                    	if (buffer[i] == '\r' && buffer[i + 1] == '\n' && buffer[i + 2] == '\r' && buffer[i + 3] == '\n') {	// Check if done printing header.
+					                        endOfHeader = true;																				// Set end of header true, since done reading header.
+					                        int dataStart = i + 4;																			// Set pointer where the data starts + 4 to skip the .
+					                        int dataLength = length - dataStart;															// Calculate the current buffered data length.
+					                        head = new String(buffer, 0, length, StandardCharsets.UTF_8);									// Place the head of file in a string. 
+				        				 	fileOutputStream.write(buffer, dataStart, dataLength);											// Write bytes where header ends to file.
+				                    	}             
+			                	}	   
+			            } else {
+			                fileOutputStream.write(buffer, 0, length);															// Write current buffer to file.
+			            } 
+			            bytesRead += length;																					// Increase bytes read.
+			        }
+			        
+			        if(!checkType(head)) {
+			        	fileOutputStream.close();																				// Close the image write stream.
+			        	uploadedImage.delete();																					// Delete the file.
+                    	postError("303 See Other", "/upload/fail.html");														// Redirect user to fail page.
+                    }else {
+                    	postError("302 Found", "/upload/success.html?code="+imageName); 										// Redirect user to success page.
+                    	fileOutputStream.close();																				// Close the image write stream.
+                    }
+				 	
+			} catch (Exception e) {
+					e.printStackTrace();
+					errorHandle("500 Internal Server Error", "Error 500: Internal Server Error."); // If something happens here, send an internal error to the user.
+			} 
+			
+	 	}
+	 
+	 	
+		/**
+		 * This method is used to check the type of the uploaded file
+		 * If the type is not .png the method will return false.
+		 * If the type is .png the method will return true.
+		 * @param request - The current data stream the requester sent.
+		 * @return
+		 */
+		public static boolean checkType(String  head){
+			try {	
+				if( head.contains("Content-Type: image/png") && head.contains(".png") &&  head.contains("PNG") )	// Check if the file type is PNG.
+					return true;	// Return true if this is a pang file.
+				else 
+					return false;	// Return false if the file is not a PNG.
+				
+			} catch (Exception  e) {
+				e.printStackTrace();
+				errorHandle("500 Internal Server Error", "Error 500: Internal Server Error."); 	// If something wrong happens here, send an internal error to the user.
+			}
+			return false;		// If fail the return will be false..
+		}
+	 
+	 
+	 
+	 /**
+	  * This method is used to make the file path java-friendly.
+	  * It changes single slashed to two backslashes.
+	  * @param requestLocation - The path which is requested.
+	  * @return	- Returns the formated path.
+	  */
+	 public static String formatePath(String requestLocation) {
+			String formatedLocation = "";
+			if(requestLocation != null) {
+				    formatedLocation = requestLocation.replaceAll("/", "\\\\");									// Replace all slashes with slashes that java can read.
+				    while( formatedLocation.charAt(0) == '.')
+				    	formatedLocation = formatedLocation.substring( 1, formatedLocation.length() - 1);		// Remove dots in the beginning.
+				    return formatedLocation;
+	 		}else
+	 				return "";																					// Return an empty string.
+	 }
+	  
+	 
+	 /**
+	  * Function used to extract the type of the requested file from the request URL.
+	  * This type will be used for the response header "Content-type:".
+	  * @param formatedLocation	- The path that the user is requesting.
+	  * @return	- Returns the type of the end file such as, .JPG, .HTML and son on.
+	  */
+	 public static String requestType(String formatedLocation) {
+			    String type =  formatedLocation.substring(formatedLocation.lastIndexOf(".")+1, formatedLocation.length());		// Get the type of the requested file.
+			    // Handle the types.
+		 	    if(type.equals("html") || type.equals("css") || type.equals("htm"))								// HTML,htm and css file.
+		 	    	return  ("text/"+type);																		
+		 	    else if(type.equals("png") || type.equals("jpg") || type.equals("jpeg") )					 	// Image files.
+		 	    	return ("Content-Type: image/"+type);
+		 	    else if(type.equals("js"))										
+		 	    	return("Content-Type: application/javascript");												// JavaScript file
+		 	    else
+		 	    	return("Content-Type: text/plain");															// Text file if none of them above.
+	 }
+	 
+	 /**
+	  * This function is used to indicate if something went wrong while,
+	  * generating a response. If the requested page was not found code 404 will be returned.
+	  */
+	 public static void errorHandle(String code, String message){
+			try {
+				byte[] requestedFile = Files.readAllBytes(Paths.get(root.getPath()+"\\errors\\"+code.substring(0,3)+".html"));		// Go to requested path.			  		    
+		 	    PrintWriter head = new PrintWriter(socket.getOutputStream());
+		 		DataOutputStream data = new DataOutputStream(socket.getOutputStream());
+
+		 		head.println("HTTP/1.1 "+code);												// Response code.
+		 		head.println("Server: NetworkServer Mm223kk_assignment: 2.0");				// Server Information.
+		 		head.println("Date: " + new Date());										// Current Time.
+		 		head.println("Content-Type: text/html");				// Set the type.
+		 		head.println("Content-Length: " + requestedFile.length);					// Content size (bytes).
+		 		head.println();																// New line between response header, and response data.
+		 		head.flush();																// Clear the stream.
+		 	    data.write(requestedFile);													// Write the data to the header.
+		 	    data.flush();																// Clear the stream.
+		 	    // Close the input streams and socket.
+		 	    head.close();																// Close the header stream.
+		 	    data.close();																// Close the data stream.
+		 	    socket.close();																// Close the socket.	
+			} catch (IOException e) {
+				e.printStackTrace();														// If error occurs here, print the error. To avoid infinity loop.
+				//errorHandle("500 Internal Server Error", "Error 500: Internal Server Error."); // If something happens here, send an internal error to the user.
+			}	 
+	 }
+	 
+	 public static void postError(String status, String redirection) {
+			try {
+				// Set response to index.html if it is a directory.
+		 	    PrintWriter head = new PrintWriter(socket.getOutputStream());
+		 	    head.println("HTTP/1.1 "+status);
+				head.println("Location: "+redirection);
+				head.println("Server: NetworkServer Mm223kk_assignment: 2.0");
+		 		head.println();																	// New line between response header, and response data.
+		 		head.flush();																	// Clear the stream.
+		 		head.println();
+		 		head.flush();																	// Clear the stream.
+		 	    head.close();																	// Close the header stream.
+		 	    socket.close();			
+			} catch (Exception e) {
+				errorHandle("500 Internal Server Error", "Error 500: Internal Server Error."); // If something happens here, send an internal error to the user.
+				e.printStackTrace();
+			}																
+	 }
+}

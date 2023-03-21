@@ -1,0 +1,81 @@
+package mm223kk_assignment_2;
+
+//Needed libraries, only built in.
+import java.io.*;
+import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Date;
+
+/**
+ * This clas handles 
+ * @author Sami Mwanje, mm223kk@student.lnu.se
+ *
+ */
+public class Errors {
+	
+	private Socket socket;	// Current socket
+	private File root;		// Current root
+	Errors(Socket socket, File root) {
+		this.socket = socket;	
+		this.root = root;
+	}
+
+	 /**
+	  * This function is used to indicate if something went wrong while,
+	  * generating a response. If the requested page was not found code 404 will be returned.
+	  */
+	 public void errorHandle(String code, String message){
+		 
+			  byte[] errorPage = null;		
+			  try {	// Try the error solution based on my own server set up.
+				  errorPage = Files.readAllBytes(Paths.get(root.getPath()+"\\errors\\"+code.substring(0,3)+".html"));		// Go to error page.	
+			  }catch (Exception e) {
+				  
+			  }
+	
+			try {
+				if(errorPage == null)	// If no error page file was found in directories.
+					errorPage = message.getBytes();	// Use standard message as error solution.
+
+		 		DataOutputStream data = new DataOutputStream(socket.getOutputStream());
+		 		PrintWriter head = new PrintWriter(socket.getOutputStream());
+		 		head.println("HTTP/1.1 "+code);												// Response code.
+		 		head.println("Server: NetworkServer Mm223kk_assignment: 2.0");				// Server Information.
+		 		head.println("Date: " + new Date());										// Current Time.
+		 		head.println("Content-Type: text/html");				// Set the type.
+		 		head.println("Content-Length: " + errorPage.length);						// Content size (bytes).
+		 		head.println();																// New line between response header, and response data.
+		 		head.flush();																// Clear the stream.		 		
+		 	    data.write(errorPage);														// Write the data to the header.
+		 	    data.flush();																// Clear the stream.
+		 	    // Close the input streams and socket.
+		 	    head.close();																// Close the header stream.
+		 	    data.close();																// Close the data stream.
+		 	    socket.close();																// Close the socket.	
+			} catch (IOException e) {
+				e.printStackTrace();														// If error occurs here, print the error. To avoid infinity loop.
+				//errorHandle("500 Internal Server Error", "Error 500: Internal Server Error."); // If something happens here, send an internal error to the user.
+			}	 
+	 }
+	 
+	 public void postError(String status, String redirection) {
+			try {
+				// Set response to index.html if it is a directory.
+		 	    PrintWriter head = new PrintWriter(socket.getOutputStream());
+		 	    head.println("HTTP/1.1 "+status);
+				head.println("Location: "+redirection);
+				head.println("Server: NetworkServer Mm223kk_assignment: 2.0");
+		 		head.println();																	// New line between response header, and response data.
+		 		head.flush();																	// Clear the stream.
+		 		head.println();
+		 		head.flush();																	// Clear the stream.
+		 	    head.close();																	// Close the header stream.
+		 	    socket.close();			
+			} catch (Exception e) {
+				errorHandle("500 Internal Server Error", "Error 500: Internal Server Error."); // If something happens here, send an internal error to the user.
+				e.printStackTrace();
+			}																
+	 }
+
+}

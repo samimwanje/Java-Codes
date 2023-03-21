@@ -1,0 +1,386 @@
+/**
+ * Author: Sami Mwanje
+ * Mail:   mm223kk@stunde.lnu.se
+ * Date:   2023-01-03
+ */
+package mm223kk_assignment_1;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Scanner;
+public class Assignment_1_3 {
+	
+			public static Scanner input;										// Load scanner library.
+
+		    public static void main(String[] args)  {
+		    		runProgram();	// Start the program.
+		    }
+	
+		    /**
+		     * Function used to run the home menu for user.
+		     */
+		    public static void runProgram(){
+		    	input = new Scanner(System.in);
+		    	int number = homeMenu();  	
+		    	if(number == 1) {
+		    		for (int i = 0; i < 50; ++i) System.out.println();
+		    		encryptMenu();
+		    	}else if(number == 2) {
+		    		for (int i = 0; i < 50; ++i) System.out.println();
+		    		decryptMenu();
+		    	}	
+		    }
+		    
+		    
+		    /**
+		     * Function for the home menu.
+		     * @return number - return a value of the users choice.
+		     */
+			private static int  homeMenu() {
+			    	System.out.println("*******************HOME-MENU*******************\n" +
+		                       "*                                             *\n" +
+		                       "*                                             *\n" +
+		                       "*  Please select the task you want to perfom: *\n" +
+		                       "*                                             *\n" +
+		                       "*                1. ENCRYPT                   *\n" +
+		                       "*                2. DECRYPT                   *\n" +
+		                       "*                3. EXIT                      *\n" +
+		                       "*                                             *\n" +
+		                       "*                                             *\n" +
+		                       "***********************************************\n");
+			    	System.out.print("Enter selection and press ENTER: ");
+			    	return inputMenu();
+		    }
+			
+			/**
+		     * Function used to control the user input.
+		     * @return - returns the number.
+		     */
+		    private static int inputMenu() {
+		    	
+			    	int number  = 0;															// What initialize 
+			    	while(true) {
+				            String choice = input.nextLine();
+				            try {
+				                number = Integer.parseInt(choice);
+				                break;
+				            } catch (NumberFormatException e) {
+				                System.out.println(choice + " The input was not valid\n");
+				                System.out.print("Enter key and press ENTER: ");
+				            }
+			        }
+			        return number;															// Returns the choice in the menu.	
+		    }
+		    
+		    /**
+		     * Function for the decryption menu.
+		     */
+		    private static void decryptMenu() {
+		    	System.out.println("*******************DECRYPT*********************\n" +
+	                       "*                                             *\n" +
+	                       "*                                             *\n" +
+	                       "*  Please select the task you want to perfom: *\n" +
+	                       "*                                             *\n" +
+	                       "*         1. SUBSTITUTION  DECRYPTION         *\n" +
+	                       "*         2. TRANSPOSITION DECRYPTION         *\n" +
+	                       "*         3. BACK                             *\n" +
+	                       "*                                             *\n" +
+	                       "*                                             *\n" +
+	                       "***********************************************\n");
+		    	System.out.print("Enter selection and press ENTER: ");
+
+		    	int number = inputMenu();
+		    	if(number == 1)
+		    		subDecryption();
+		    	else if(number == 2)
+		    		transDecryption();
+		    	else
+		    		runProgram();                   
+		    }
+		    
+		    /**
+		     * Function for the encryption menu.
+		     */
+		    private static void encryptMenu() {
+		    	System.out.println("*******************ENCRYPT*********************\n" +
+	                       "*                                             *\n" +
+	                       "*                                             *\n" +
+	                       "*  Please select the task you want to perfom: *\n" +
+	                       "*                                             *\n" +
+	                       "*         1. SUBSTITUTION  ENCRYPTION         *\n" +
+	                       "*         2. TRANSPOSITION ENCRYPTION         *\n" +
+	                       "*         3. BACK                             *\n" +
+	                       "*                                             *\n" +
+	                       "*                                             *\n" +
+	                       "***********************************************\n");
+		    	System.out.print("Enter selection and press ENTER: ");
+		    	
+		    	int number = inputMenu();
+		    	if(number == 1)
+		    		subEncryption();
+		    	else if(number == 2)
+		    		transEncryption();
+		    	else 
+		    		runProgram();		
+
+			}
+		    
+		    /**
+		     * Function used to create substitution encryption.
+		     */
+		    private static void subEncryption() {
+		    	
+			    	System.out.print("Enter plaintext path: ");							// Ask user for key.
+		    		String path = input.nextLine();										// Generate a key.	
+			        String plaintext = "";												//  Initialize plain text variable.
+		    		int key =  0;														// Generate a key.
+		    		String encryptedMessage = "";												//Initialize a string  variable for  the encrypted message.
+		    		try {
+			    		System.out.print("Enter a key max 2^8 bits: ");								// Ask user for key.
+			    		key = generateKey();	
+		    		    File myObj = new File(path);
+		    		    Scanner sc = new Scanner(myObj);
+		    		    int stars = 0;
+		    		    while (sc.hasNextLine()) {
+		    		      String currentLine = sc.nextLine();
+		    		      encryptedMessage += currentLine+"\n";
+	    		    	  if( currentLine.equals("***************************************************************************************************") )
+	    		    		  stars++; 
+	    		    	  if(stars == 3)
+	    		    		  break;
+		    		    }        
+			    		while(sc.hasNextLine())
+			    		    plaintext += sc.nextLine()+"\n";
+			    		System.out.println(plaintext);
+			    		sc.close();
+			    		
+		    		} catch (FileNotFoundException e) {
+		    		      System.out.println("An error occurred.");
+		    		      e.printStackTrace();
+		    		}
+		    		
+			            
+			        // Iterate through each character in the plain text.
+			        for (int i = 0; i < plaintext.length(); i++) {
+			            char letter = plaintext.charAt(i);	 									// Get the current character from the plain text.
+			            if(!Character.isLetter(letter)) {														// Makes sure the the encrypted message is kept original.
+			            	encryptedMessage += letter;											// Add space to the encrypted message.
+			            	continue;															// Goes to the next char in the plain text.
+			            }
+			            
+			          	char encryptedChar;														// Initialize encrypted char.
+						if (Character.isUpperCase(letter))
+							encryptedChar = (char) ((((letter - 'A' + key) % 26) + 26) % 26 + 'A'); // Calculate the encrypted character using the updated formula
+						else 
+							encryptedChar =  (char) ((((letter - 'a' + key) % 26) + 26) % 26 + 'a'); // Calculate the encrypted character using the updated formula
+						
+				        encryptedMessage += (encryptedChar);										// Add the encrypted character to the encrypted message.  
+			        }
+
+				 	try {
+						BufferedWriter writer = new BufferedWriter(new FileWriter(path,false)); 
+						writer.append(encryptedMessage);	
+						writer.close();
+						
+					} catch (IOException e) {
+						e.printStackTrace();
+				    }
+   
+		    }
+		    
+		    /**
+		     * Function used to generate the key, and checks if
+		     *  the key is in the range of the maximum size.
+		     * @return
+		     */
+		    private static int generateKey() {
+		    	    int key = input.nextInt();
+		    	    while (key > (2^8)) {
+		    	      System.out.println("Error: Key can only be max 2^8 bits in size.");	// Show what went wrong.	
+		    	      key = input.nextInt(); 												// Ask for new key.
+		    	    }		
+		    	    input.nextLine();
+		    	    return key;																// Return the key.
+		    }
+		    
+	  
+		    /**
+		     * Function used to create substitution decryption.
+		     */
+		    private static void subDecryption() {
+		    	
+		    	
+		    	System.out.print("Enter plaintext path: ");							// Ask user for key.
+	    		String path = input.nextLine();										// Generate a key.	
+		        String plaintext = "";												//  Initialize plain text variable.
+	    		int key =  0;														// Generate a key.
+	    		String encryptedMessage = "";												//Initialize a string  variable for  the encrypted message.
+	    		try {
+		    		System.out.print("Enter a key max 2^8 bits: ");								// Ask user for key.
+		    		key = generateKey();	
+	    		    File myObj = new File(path);
+	    		    Scanner sc = new Scanner(myObj);
+	    		    int stars = 0;
+	    		    while (sc.hasNextLine()) {
+	    		      String currentLine = sc.nextLine();
+	    		      encryptedMessage += currentLine+"\n";
+    		    	  if( currentLine.equals("***************************************************************************************************") )
+    		    		  stars++; 
+    		    	  if(stars == 3)
+    		    		  break;
+	    		    }        
+		    		while(sc.hasNextLine())
+		    		    plaintext += sc.nextLine()+"\n";
+		    		System.out.println(plaintext);
+		    		sc.close();
+		    		
+	    		} catch (FileNotFoundException e) {
+	    		      System.out.println("An error occurred.");
+	    		      e.printStackTrace();
+	    		}
+
+		    		String decryptedMessage = "";	// Initialize a the decrypted message.
+		    	  	// Iterate through each character in the plain text.
+			        for (int i = 0; i < encryptedMessage.length(); i++) {
+			            char letter = encryptedMessage.charAt(i);	 							// Get the current character from the plain text.
+			            if(!Character.isLetter(letter)) {														// Makes sure the the encrypted message is kept original.
+			            	decryptedMessage += letter;											// Add space to the encrypted message.
+			            	continue;															// Goes to the next char in the plain text.
+			            }           
+			            char decryptedChar;														// Initialize encrypted char.
+						if (Character.isUpperCase(letter))										// Check if lower or upper case before encryption.
+							decryptedChar = (char) ((((letter - 'A' - key) % 26) + 26) % 26 + 'A');
+						else 
+							decryptedChar = (char) ((((letter - 'a' - key) % 26) + 26) % 26 + 'a');
+						
+						decryptedMessage += decryptedChar;									// Add the encrypted character to the encrypted message.  
+			        }
+			        
+			        System.out.println(decryptedMessage);
+				 	try {
+					
+						BufferedWriter writer = new BufferedWriter(new FileWriter(path,false)); 
+						writer.append(decryptedMessage);											// Append the latest result to the decryption file.
+						writer.close();
+						
+					} catch (IOException e) {
+						e.printStackTrace();
+				    }
+				 	
+		    }
+	    
+		    /**
+		     * Function used to create transEncryption.
+		     */
+		    private static void transEncryption() {	
+		    	
+		    	System.out.print("\nEnter the key: ");								//  Ask user for message.
+		    	int rows =  input.nextInt();	
+		    	input.nextLine();		// Clear input.
+
+		        System.out.print("\nEnter the plaintext: ");								//  Ask user for message.
+		        String plaintext = input.nextLine();										//  Initialize plain text variable.   
+		        String encryptedMessage = "";												//Initialize a string  variable for  the encrypted message.
+     
+		        int columns =  (int) Math.ceil( (double) plaintext.length() / rows );	// Columns will be rows/key.  
+		        char[][] matrix = new char[rows][columns]; // Initialize a matrix-array with rows equal to the key and columns rows/key.  
+		        int k = 0;	// Counter for current char in the plain text.
+		        for (int row = 0; row <	rows; row++) {
+		            for (int column = 0; column < columns; column++)	
+		            	if (k < plaintext.length())					// Check if done.
+		            		matrix[row][column] = plaintext.charAt(k++);			// Add all chars values in the plain text to the matrix.  		
+		        }		
+	        
+	        	k = 0;		// Counter for current char in the plain text.
+	            for (int column = 0; column < columns; column++) {
+	            	for (int row = 0; row < rows; row++) {
+	            		if (k++ < plaintext.length())					// Check if done.
+	            			encryptedMessage +=  matrix[row][column];			// Add column by column to encrypted message.	
+	            	}
+	            }
+	            
+		                             
+	            try {
+			        System.out.println("Encryption file name: ");							// Ask user for filename.
+			        String fileName =  input.nextLine();									// Set file name.        
+			        String path = fileName;			       						 			// Path where the encryption file will be will be located.			
+					BufferedWriter writer = new BufferedWriter(new FileWriter(path,false)); 
+					writer.append(encryptedMessage);	
+					writer.close();
+					
+				} catch (IOException e) {
+					e.printStackTrace();
+			    }
+	
+		    }
+	    
+		    /**
+		     * Function used to decrypt transposition encryption.
+		     */
+		    private static void transDecryption() {	
+		    	
+				    		String file = "";															// Generate a key.
+				    		int rows = 0;	 															// Get the rows from the entered key.
+				    		String encryptedMessage = "";
+    		
+				    		try {
+		    	
+							    	System.out.print("Enter encryption filename: ");					// Ask user for key.
+						    		file = input.nextLine();											// Generate a key.
+						    		System.out.println(file);						
+					
+						    		System.out.print("Enter key: ");									// Ask user for key.
+						    		rows = input.nextInt();	 											// Get the rows from the entered key.
+						    			
+					    		    File myObj = new File(file);
+					    		    Scanner sc = new Scanner(myObj);
+					    		    encryptedMessage = "";												// Initialize encrypted message.
+					    	
+					    		    while (sc.hasNextLine()) {
+					    		    	 encryptedMessage += sc.nextLine();								// Append message to file.
+					    		    }
+					    		    sc.close();
+				    		      
+				    		} catch (FileNotFoundException e) {
+				    		      System.out.println("An error occurred, please tru again.");
+				    		      e.printStackTrace();
+				    		}
+				    		
+				    		
+				    		int columns =  encryptedMessage.length()/rows;									// Columns will be rows/key.
+				    		rows++;
+					        char[][] matrix = new char[rows][columns]; 										// Initialize a matrix-array with rows equal to the key and columns rows/key.  
+					        int k = 0;																		// Counter for current char in the plain text.
+					        for (int row = 0; row <	rows; row++) {
+					            for (int column = 0; column < columns; column++)	
+					            	if (k < encryptedMessage.length())										// Check if done.
+					            		matrix[row][column] = encryptedMessage.charAt(k++);					// Add all chars values in the plain text to the matrix.  		
+					        }
+					        
+				        	String decryptedMessage = "";													// Initialize the decrypted message
+				            for (int column = 0; column < columns; column++) {
+				            	for (int row = 0; row < rows; row++) {
+				            			decryptedMessage +=  matrix[row][column];							// Add column by column to encrypted message.	
+				            	}
+				            }
+				            
+		        
+				    	  	System.out.println("Enter decryption file name: ");								// Ask user for filename.
+				    	  	input.nextLine();
+					        String path = input.nextLine();			        								// Path where the decryption file will be located.
+						 	try {
+							
+								BufferedWriter writer = new BufferedWriter(new FileWriter(path,false)); 
+								writer.append(decryptedMessage);											// Append the latest result to the decryption file.
+								writer.close();
+								
+							} catch (IOException e) {
+								e.printStackTrace();
+						    }		
+						 	
+		    } 
+		
+}
